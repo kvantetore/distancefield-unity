@@ -16,6 +16,14 @@ public class BitmapChar
     public float XAdvance;
 }
 
+[System.Serializable]
+public class BitmapCharKerning
+{
+    public int FirstChar;
+    public int SecondChar;
+    public float Amount;
+}
+
 /* Class: BitmapFont
  * 
  * Holds the font textures and information.
@@ -55,8 +63,10 @@ public class BitmapFont : MonoBehaviour
     public float ScaleH;
     public BitmapChar[] Chars;
     public Texture2D[] Pages;
+    public BitmapCharKerning[] Kernings;
 
     private Dictionary<int, Material> fontMaterials = new Dictionary<int, Material>();
+    private Material[] pageMaterials;
 
     public BitmapChar GetBitmapChar(int c)
     {
@@ -71,68 +81,166 @@ public class BitmapFont : MonoBehaviour
         return Chars[0];
     }
 
-    public Material GetMaterial(int c)
+    public Rect GetUVRect(int c)
     {
-        //Recreate materials every time. This is probably horribly slow,
-        //but it allows updating the values in realtime
-        if (fontMaterials.ContainsKey(c))
+        BitmapChar bitmapChar = GetBitmapChar(c);
+        return GetUVRect(bitmapChar);
+    }
+
+    public Rect GetUVRect(BitmapChar bitmapChar)
+    {
+        //Convert positions/scale from AngleCode-format (pixels, top left origin) to uv format (0-1, bottom left origin)
+        Vector2 scaledSize = new Vector2(bitmapChar.Size.x / ScaleW, bitmapChar.Size.y / ScaleH);
+        Vector2 scaledPos = new Vector2(bitmapChar.Position.x / ScaleW, bitmapChar.Position.y / ScaleH);
+        Vector2 uvCharPos = new Vector2(scaledPos.x, 1 - (scaledPos.y + scaledSize.y));
+
+        return new Rect(uvCharPos.x, uvCharPos.y, scaledSize.x, scaledSize.y);
+    }
+
+
+    public Material CreateFontMaterial()
+    {
+        return new Material(Shader.Find("BitmapFont/Outline"));
+    }
+
+    public void UpdateFontMaterial(Material fontMaterial)
+    {
+        //Forward parameters to shader
+        fontMaterial.color = Color;
+        fontMaterial.SetFloat("_AlphaMin", AlphaMin);
+        fontMaterial.SetFloat("_AlphaMax", AlphaMax);
+        fontMaterial.SetColor("_ShadowColor", ShadowColor);
+        fontMaterial.SetFloat("_ShadowAlphaMin", ShadowAlphaMin);
+        fontMaterial.SetFloat("_ShadowAlphaMax", ShadowAlphaMax);
+        fontMaterial.SetFloat("_ShadowOffsetU", ShadowOffset.x);
+        fontMaterial.SetFloat("_ShadowOffsetV", ShadowOffset.y);
+    }
+
+    /* Method: GetPageMaterial
+     * 
+     * Returns a material with the right texture 
+     * for the given page.
+     */
+    public Material GetPageMaterial(int page)
+    {
+        if (pageMaterials.Length != Pages.Length)
         {
-            Object.Destroy(fontMaterials[c]);
-            fontMaterials.Remove(c);
+            pageMaterials = new Material[Pages.Length];
+        }
+        if (page >= Pages.Length)
+        {
+            return null;
+        }
+        if (pageMaterials[page] == null)
+        {
+            pageMaterials[page] = CreateFontMaterial();
+            pageMaterials[page].mainTexture = Pages[page];
         }
 
+        UpdateFontMaterial(pageMaterials[page]);
+        return pageMaterials[page];
+    }
+
+    /* Method: GetCharacterMaterial
+     * 
+     * Returns a material with the right texture, offset and scale
+     * to render the given character within the (0,1) x (0,1) uv space
+     */
+    public Material GetCharacterMaterial(int c)
+    {
+        //If material doesn't exist for this character, create it
         if (!fontMaterials.ContainsKey(c))
         {
+            Material fontMaterial = CreateFontMaterial();
             BitmapChar bitmapChar = GetBitmapChar(c);
-            Material fontMaterial = new Material(Shader.Find("BitmapFont/Outline"));
 
-            //Convert positions/scale from AngleCode-format (pixels, top left origin) to uv format (0-1, bottom left origin)
-            Vector2 scaledSize = new Vector2(bitmapChar.Size.x / ScaleW, bitmapChar.Size.y / ScaleH);
-            Vector2 scaledPos = new Vector2(bitmapChar.Position.x / ScaleW, bitmapChar.Position.y / ScaleH);
-            Vector2 uvCharPos = new Vector2(scaledPos.x, 1-(scaledPos.y + scaledSize.y));
-
+            Rect uvRect = GetUVRect(bitmapChar);
             fontMaterial.mainTexture = Pages[bitmapChar.Page];
-            fontMaterial.mainTextureScale = scaledSize; // xy
-            fontMaterial.mainTextureOffset = uvCharPos; // zw
+            fontMaterial.mainTextureScale = new Vector2(uvRect.width, uvRect.height); // xy
+            fontMaterial.mainTextureOffset = new Vector2(uvRect.xMin, uvRect.yMin); // zw
 
-            //Forward parameters to shader
-            fontMaterial.color = Color;
-            fontMaterial.SetFloat("_AlphaMin", AlphaMin);
-            fontMaterial.SetFloat("_AlphaMax", AlphaMax);
-            fontMaterial.SetColor("_ShadowColor", ShadowColor);
-            fontMaterial.SetFloat("_ShadowAlphaMin", ShadowAlphaMin);
-            fontMaterial.SetFloat("_ShadowAlphaMax", ShadowAlphaMax);
-            fontMaterial.SetFloat("_ShadowOffsetU", ShadowOffset.x);
-            fontMaterial.SetFloat("_ShadowOffsetV", ShadowOffset.y);
-            
             //Cache material for this character
             fontMaterials[c] = fontMaterial;
         }
 
-        return fontMaterials[c];
+        //Update material to get the current parameters
+        Material mat = fontMaterials[c];
+        UpdateFontMaterial(mat);
+        return mat;
     }
 
-
-    public Vector2 Render(Vector2 position, string str, float renderSize)
+    public float GetKerning(char first, char second)
     {
-        Vector2 curPos = position;
-        float scale = renderSize / Size;
-
-        foreach (char c in str)
+        if (Kernings != null)
         {
-            Material mat = GetMaterial((int)c);
+            foreach (BitmapCharKerning krn in Kernings)
+            {
+                if (krn.FirstChar == (int)first && krn.SecondChar == (int)second)
+                {
+                    return krn.Amount;
+                }
+            }
+        }
+        return 0;
+    }
+
+    public Vector2 CalculateSize(string str, Vector2 renderSize)
+    {
+        Vector2 curPos = new Vector2(0, renderSize.y);
+        Vector2 scale = renderSize / Size;
+
+        for (int idx = 0; idx < str.Length; idx++)
+        {
+            char c = str[idx];
             BitmapChar charInfo = GetBitmapChar((int)c);
 
-            Vector2 scaledSize = charInfo.Size * scale;
-            Vector2 scaledOffset = charInfo.Offset * scale;
-
-            Graphics.DrawTexture(new Rect((int)(curPos.x + scaledOffset.x), (int)(curPos.y + scaledOffset.y), (int)scaledSize.x, (int)scaledSize.y), mat.mainTexture, mat);
-
-            curPos.x += charInfo.XAdvance * scale;
+            float krn = 0;
+            if (idx < str.Length - 1)
+            {
+                krn = GetKerning(c, str[idx + 1]);
+            }
+            curPos.x += (charInfo.XAdvance + krn) * scale.x;
         }
 
         return curPos;
     }
 
+    public Vector2 CalculateSize(string str, float renderSize)
+    {
+        return CalculateSize(str, new Vector2(renderSize, renderSize));
+    }
+
+    public Vector2 Render(Vector2 position, string str, Vector2 renderSize)
+    {
+        Vector2 curPos = position;
+        Vector2 scale = renderSize / Size;
+
+        for (int idx=0; idx<str.Length; idx++)
+        {
+            char c = str[idx];
+            Material mat = GetCharacterMaterial((int)c);
+            BitmapChar charInfo = GetBitmapChar((int)c);
+
+            Vector2 scaledSize = Vector2.Scale(charInfo.Size, scale);
+            Vector2 scaledOffset = Vector2.Scale(charInfo.Offset, scale);
+
+            Graphics.DrawTexture(new Rect((int)(curPos.x + scaledOffset.x), (int)(curPos.y + scaledOffset.y), (int)scaledSize.x, (int)scaledSize.y), mat.mainTexture, mat);
+            //Graphics.DrawTexture(new Rect((int)(curPos.x), (int)(curPos.y), (int)scaledSize.x, (int)renderSize.y), mat.mainTexture, mat);
+
+            float krn = 0;
+            if (idx < str.Length - 1)
+            {
+                krn = GetKerning(c, str[idx + 1]);
+            }
+            curPos.x += (charInfo.XAdvance + krn) * scale.x;
+        }
+
+        return curPos;
+    }
+
+    public Vector2 Render(Vector2 position, string str, float renderSize)
+    {
+        return Render(position, str, new Vector2(renderSize, renderSize));
+    }
 }
 

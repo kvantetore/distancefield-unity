@@ -86,6 +86,9 @@ public class FontImporter
         }
     }
 
+    /* .fnt parser taken from 
+     * 
+     */
     static BitmapFont UpdateBitmapFont(string path, BitmapFont fnt)
     {
         XmlDocument doc = new XmlDocument();
@@ -155,13 +158,19 @@ public class FontImporter
         }
 
 
-        /* TODO: use kerning info
+        //Load kerning info
         XmlNodeList kernings = doc.SelectNodes("/font/kernings/kerning");
+        fnt.Kernings = new BitmapCharKerning[kernings.Count];
+        index = 0;
         foreach (XmlNode kerning in kernings)
         {
-            ReadFloatAttribute(kerning, "amount");
+            BitmapCharKerning krn = new BitmapCharKerning();
+            krn.FirstChar = ReadIntAttribute(kerning, "first");
+            krn.SecondChar = ReadIntAttribute(kerning, "second");
+            krn.Amount = ReadFloatAttribute(kerning, "amount");
+            fnt.Kernings[index] = krn;
+            index++;
         }
-         */
 
         return fnt;
     }
