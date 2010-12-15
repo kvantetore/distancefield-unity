@@ -4,6 +4,16 @@ using System.Collections.Generic;
 using System.Xml;
 using System.Xml.Serialization;
 
+/* Class: UnityFontImporter
+ * 
+ * Reads a TTF font (that's already imported by Unity) and generates an 
+ * Signed Distance Field (SDF) from the unity-generated font texture, and
+ * replaces the shader with an SDF shader (BitmapFont/Outline)
+ * 
+ * Due to the way Unity packs the characters in the texture, the result isn't
+ * all that great, as it leaves very little space for the SDF to spread, which 
+ * leads to bleeding between characters and abrupt cutoffs around certain glyphs
+ */
 public class UnityFontImporter
 {
     //TODO: Expose parameters to user at import time
@@ -22,7 +32,22 @@ public class UnityFontImporter
      */
     static DistanceField.TextureChannel InputTextureChannel = DistanceField.TextureChannel.ALPHA;
 
-    [MenuItem("Assets/UnityFont/Import Font")]
+    [MenuItem("Assets/BitmapFont/Convert Unity TTF to SDF", validate = true)]
+    static bool Validate()
+    {
+        foreach (Object o in Selection.GetFiltered(typeof(Object), SelectionMode.DeepAssets))
+        {
+            string path = AssetDatabase.GetAssetPath(o.GetInstanceID());
+            if (path.ToLower().EndsWith(".fnt"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    [MenuItem("Assets/BitmapFont/Convert Unity TTF to SDF")]
     static void Import()
     {
         foreach (Object o in Selection.GetFiltered(typeof(Font), SelectionMode.DeepAssets))
