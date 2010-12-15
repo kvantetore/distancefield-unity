@@ -149,7 +149,7 @@ public class BitmapFont : MonoBehaviour
     public Material GetCharacterMaterial(int c)
     {
         //If material doesn't exist for this character, create it
-        if (!fontMaterials.ContainsKey(c))
+        if (!fontMaterials.ContainsKey(c) || fontMaterials[c] == null)
         {
             Material fontMaterial = CreateFontMaterial();
             BitmapChar bitmapChar = GetBitmapChar(c);
