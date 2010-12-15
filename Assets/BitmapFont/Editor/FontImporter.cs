@@ -40,10 +40,25 @@ public class FontImporter
      */
     static DistanceField.TextureChannel InputTextureChannel = DistanceField.TextureChannel.RED;
 
+    [MenuItem("Assets/BitmapFont/Import Font", validate = true)]
+    static bool Validate()
+    {
+        foreach (Object o in Selection.GetFiltered(typeof(Object), SelectionMode.DeepAssets))
+        {
+            string path = AssetDatabase.GetAssetPath(o.GetInstanceID());
+            if (path.ToLower().EndsWith(".fnt"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     [MenuItem("Assets/BitmapFont/Import Font")]
     static void Import()
     {
-        foreach (Object o in Selection.objects)
+        foreach (Object o in Selection.GetFiltered(typeof(Object), SelectionMode.DeepAssets))
         {
             //Look for assets with the .fnt extension
             string path = AssetDatabase.GetAssetPath(o.GetInstanceID());
@@ -136,7 +151,7 @@ public class FontImporter
             inputTextureImp.isReadable = true;
             inputTextureImp.maxTextureSize = 4096;
             AssetDatabase.ImportAsset(imagePath, ImportAssetOptions.ForceSynchronousImport);
-            
+
             //Create distance field from texture
             Texture2D distanceField = DistanceField.CreateDistanceFieldTexture(inputTexture, InputTextureChannel, inputTexture.width / DistanceFieldScaleFactor);
             //Save distance field as png
