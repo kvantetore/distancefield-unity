@@ -48,7 +48,7 @@ public class BitmapMeshText : MonoBehaviour
         }
 
         Vector3 renderSize = new Vector3(1, 1, 1);
-        Vector3 renderSize2 = new Vector3(renderSize.x, renderSize.y);
+        Vector2 renderSize2 = new Vector2(renderSize.x, renderSize.y);
         Vector3 position = new Vector3(0, 0, 0);
 
         if (renderedText != Text)

@@ -123,6 +123,10 @@ public class BitmapFont : MonoBehaviour
      */
     public Material GetPageMaterial(int page)
     {
+        if (pageMaterials == null || Pages == null)
+        {
+            return null;
+        }
         if (pageMaterials.Length != Pages.Length)
         {
             pageMaterials = new Material[Pages.Length];

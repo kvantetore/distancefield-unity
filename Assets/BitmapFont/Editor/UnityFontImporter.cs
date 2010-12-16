@@ -35,15 +35,7 @@ public class UnityFontImporter
     [MenuItem("Assets/BitmapFont/Convert Unity TTF to SDF", validate = true)]
     static bool Validate()
     {
-        foreach (Object o in Selection.GetFiltered(typeof(Object), SelectionMode.DeepAssets))
-        {
-            string path = AssetDatabase.GetAssetPath(o.GetInstanceID());
-            if (path.ToLower().EndsWith(".fnt"))
-            {
-                return true;
-            }
-        }
-        return false;
+        return Selection.GetFiltered(typeof(Font), SelectionMode.DeepAssets).Length > 0;
     }
 
 
