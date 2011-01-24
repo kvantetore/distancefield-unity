@@ -1,9 +1,9 @@
 Shader "BitmapFont/Outline" {
     Properties {
-        _Color ("Main Color", Color) = (1,1,1,0)
+        _Color ("Main Color", Color) = (1,1,1,1)
 		_AlphaMin ("Alpha Min", Range(0.0,1.0)) = 0.49
 		_AlphaMax ("Alpha Max", Range(0.0,1.0)) = 0.54
-        _ShadowColor ("Shadow Color", Color) = (0.3,0.3,0.3,0)
+        _ShadowColor ("Shadow Color", Color) = (0.3,0.3,0.3,1)
 		_ShadowAlphaMin ("Shadow Alpha Min", Range(0.0,1.0)) = 0.28
 		_ShadowAlphaMax ("Shadow Alpha Max", Range(0.0,1.0)) = 0.54
 		_ShadowOffsetU ("Shadow u-offset", Range(-1.0,1.0)) = 0

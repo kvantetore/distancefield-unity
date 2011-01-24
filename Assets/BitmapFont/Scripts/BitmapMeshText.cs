@@ -78,6 +78,17 @@ public class BitmapMeshText : MonoBehaviour
             //Replace mesh
             Mesh mesh = GenerateLineMesh(position - offset, Text, renderSize);
             MeshFilter meshFilter = GetComponent<MeshFilter>();
+            if (meshFilter.sharedMesh != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(meshFilter.sharedMesh);
+                }
+                else
+                {
+                    DestroyImmediate(meshFilter.sharedMesh);
+                }
+            }
             meshFilter.mesh = mesh;
             
             //Get materials for each texture page
