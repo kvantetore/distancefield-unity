@@ -137,7 +137,7 @@ public class FontImporter
 
         //Load texture pages and convert to distance fields
         XmlNodeList pages = doc.SelectNodes("/font/pages/page");
-        fnt.Pages = new Texture2D[pages.Count];
+        Texture2D[] texturePages = new Texture2D[pages.Count];
         index = 0;
         foreach (XmlNode page in pages)
         {
@@ -154,24 +154,30 @@ public class FontImporter
 
             //Create distance field from texture
             Texture2D distanceField = DistanceField.CreateDistanceFieldTexture(inputTexture, InputTextureChannel, inputTexture.width / DistanceFieldScaleFactor);
-            //Save distance field as png
-            byte[] pngData = distanceField.EncodeToPNG();
-            string outputPath = imagePath.Substring(0, imagePath.LastIndexOf('.')) + "_dist.png";
-            System.IO.File.WriteAllBytes(outputPath, pngData);
-            AssetDatabase.ImportAsset(outputPath, ImportAssetOptions.ForceSynchronousImport);
-
-            //Set correct texture format
-            TextureImporter texImp = (TextureImporter)TextureImporter.GetAtPath(outputPath);
-            texImp.textureType = TextureImporterType.Advanced;
-            texImp.isReadable = true;
-            texImp.textureFormat = TextureImporterFormat.Alpha8;
-            AssetDatabase.ImportAsset(outputPath, ImportAssetOptions.ForceSynchronousImport);
-
-            fnt.Pages[index] = (Texture2D)AssetDatabase.LoadAssetAtPath(outputPath, typeof(Texture2D)); ;
+            texturePages[index] = distanceField;
 
             index++;
         }
 
+        //Create texture atlas
+        Texture2D pageAtlas = new Texture2D(0, 0);
+        fnt.PageOffsets = pageAtlas.PackTextures(texturePages, 0);
+
+        //Save atlas as png
+        byte[] pngData = pageAtlas.EncodeToPNG();
+        string outputPath = path.Substring(0, path.LastIndexOf('.')) + "_dist.png";
+        System.IO.File.WriteAllBytes(outputPath, pngData);
+        AssetDatabase.ImportAsset(outputPath, ImportAssetOptions.ForceSynchronousImport);
+
+        //Set correct texture format
+        TextureImporter texImp = (TextureImporter)TextureImporter.GetAtPath(outputPath);
+        texImp.textureType = TextureImporterType.Advanced;
+        texImp.isReadable = true;
+        texImp.textureFormat = TextureImporterFormat.Alpha8;
+        AssetDatabase.ImportAsset(outputPath, ImportAssetOptions.ForceSynchronousImport);
+
+        //Load the saved texture atlas
+        fnt.PageAtlas = (Texture2D)AssetDatabase.LoadAssetAtPath(outputPath, typeof(Texture2D));
 
         //Load kerning info
         XmlNodeList kernings = doc.SelectNodes("/font/kernings/kerning");

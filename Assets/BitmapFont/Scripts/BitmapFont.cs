@@ -62,11 +62,12 @@ public class BitmapFont : MonoBehaviour
     public float ScaleW;
     public float ScaleH;
     public BitmapChar[] Chars;
-    public Texture2D[] Pages;
+    public Rect[] PageOffsets;
+    public Texture2D PageAtlas;
     public BitmapCharKerning[] Kernings;
 
+    private Material pageMaterial;
     private Dictionary<int, Material> fontMaterials = new Dictionary<int, Material>();
-    private Material[] pageMaterials;
 
     public BitmapChar GetBitmapChar(int c)
     {
@@ -94,6 +95,11 @@ public class BitmapFont : MonoBehaviour
         Vector2 scaledPos = new Vector2(bitmapChar.Position.x / ScaleW, bitmapChar.Position.y / ScaleH);
         Vector2 uvCharPos = new Vector2(scaledPos.x, 1 - (scaledPos.y + scaledSize.y));
 
+        //Scale and translate according to page atlas
+        Rect offset = PageOffsets[bitmapChar.Page];
+        uvCharPos = new Vector2(uvCharPos.x * offset.width + offset.xMin, uvCharPos.y * offset.height + offset.yMin);
+        scaledSize = new Vector2(scaledSize.x * offset.width, scaledSize.y * offset.height);
+
         return new Rect(uvCharPos.x, uvCharPos.y, scaledSize.x, scaledSize.y);
     }
 
@@ -107,6 +113,7 @@ public class BitmapFont : MonoBehaviour
     {
         //Forward parameters to shader
         fontMaterial.color = Color;
+        fontMaterial.mainTexture = PageAtlas;
         fontMaterial.SetFloat("_AlphaMin", AlphaMin);
         fontMaterial.SetFloat("_AlphaMax", AlphaMax);
         fontMaterial.SetColor("_ShadowColor", ShadowColor);
@@ -123,26 +130,13 @@ public class BitmapFont : MonoBehaviour
      */
     public Material GetPageMaterial(int page)
     {
-        if (pageMaterials == null || Pages == null)
+        if (pageMaterial == null)
         {
-            return null;
-        }
-        if (pageMaterials.Length != Pages.Length)
-        {
-            pageMaterials = new Material[Pages.Length];
-        }
-        if (page >= Pages.Length)
-        {
-            return null;
-        }
-        if (pageMaterials[page] == null)
-        {
-            pageMaterials[page] = CreateFontMaterial();
-            pageMaterials[page].mainTexture = Pages[page];
+            pageMaterial = CreateFontMaterial();
         }
 
-        UpdateFontMaterial(pageMaterials[page]);
-        return pageMaterials[page];
+        UpdateFontMaterial(pageMaterial);
+        return pageMaterial;
     }
 
     /* Method: GetCharacterMaterial
@@ -159,7 +153,6 @@ public class BitmapFont : MonoBehaviour
             BitmapChar bitmapChar = GetBitmapChar(c);
 
             Rect uvRect = GetUVRect(bitmapChar);
-            fontMaterial.mainTexture = Pages[bitmapChar.Page];
             fontMaterial.mainTextureScale = new Vector2(uvRect.width, uvRect.height); // xy
             fontMaterial.mainTextureOffset = new Vector2(uvRect.xMin, uvRect.yMin); // zw
 

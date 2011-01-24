@@ -106,12 +106,7 @@ public class BitmapMeshText : MonoBehaviour
     private Mesh GenerateLineMesh(Vector3 position, string str, Vector3 renderSize)
     {
         //Set up mesh structures
-        int submeshCount = Font.Pages.Length;
-        List<int>[] Triangles = new List<int>[submeshCount];
-        for (int i = 0; i < submeshCount; i++)
-        {
-            Triangles[i] = new List<int>();
-        }
+        List<int> Triangles = new List<int>();
         List<Vector3> vertices = new List<Vector3>();
         List<Vector2> uvs = new List<Vector2>();
 
@@ -147,7 +142,7 @@ public class BitmapMeshText : MonoBehaviour
             //Set up triangles
             for (int i = 0; i < quadTriangles.Length; i++)
             {
-                Triangles[charInfo.Page].Add(quadTriangles[i] + vertIndex);
+                Triangles.Add(quadTriangles[i] + vertIndex);
             }
 
             //Advance cursor
@@ -163,12 +158,9 @@ public class BitmapMeshText : MonoBehaviour
         Mesh mesh= new Mesh();
         mesh.vertices = vertices.ToArray();
         mesh.uv = uvs.ToArray();
-        mesh.subMeshCount = submeshCount;
-        for (int i = 0; i < submeshCount; i++)
-        {
-            mesh.SetTriangles(Triangles[i].ToArray(), i);
-        }
-
+        mesh.subMeshCount = 1;
+        mesh.SetTriangles(Triangles.ToArray(), 0);
+ 
         return mesh;
     }
 }
